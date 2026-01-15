@@ -25,16 +25,9 @@ jobs:
             openjdk-17-jdk \
             autoconf automake libtool pkg-config \
             zlib1g-dev libncurses5-dev libffi-dev libssl-dev \
-            build-essential ccache
+            build-essential
 
-      - name: Accept Android SDK licenses
-        run: |
-          mkdir -p $HOME/.android
-          echo "count=0" > $HOME/.android/repositories.cfg
-          yes | $HOME/.buildozer/android/platform/android-sdk/tools/bin/sdkmanager --licenses || true
-
-
-      - name: Install buildozer
+      - name: Install Buildozer
         run: |
           python -m pip install --upgrade pip
           pip install buildozer cython
@@ -48,23 +41,30 @@ jobs:
           sed -i 's/^title = .*/title = Planner/' buildozer.spec
           sed -i 's/^package.name = .*/package.name = planner/' buildozer.spec
           sed -i 's/^package.domain = .*/package.domain = org.oleksii/' buildozer.spec
-          sed -i 's/^requirements = .*/requirements = python3,kivy,https:\/\/github.com\/kivymd\/KivyMD\/archive\/master.zip,plyer/' buildozer.spec
-          sed -i 's/^android.permissions = .*/android.permissions = POST_NOTIFICATIONS,VIBRATE/' buildozer.spec
+          sed -i 's/^requirements = .*/requirements = python3,kivy/' buildozer.spec
           sed -i 's/^android.api = .*/android.api = 33/' buildozer.spec
-          sed -i 's/^android.sdk = .*/android.sdk = 33/' buildozer.spec
-          sed -i 's/^android.ndk = .*/android.ndk = 25b/' buildozer.spec
           sed -i 's/^android.minapi = .*/android.minapi = 21/' buildozer.spec
-          echo 'android.accept_sdk_license = True' >> buildozer.spec
+          sed -i 's/^android.ndk = .*/android.ndk = 25b/' buildozer.spec
+          echo "android.accept_sdk_license = True" >> buildozer.spec
 
-
-     
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
       - name: Install Android SDK packages
         run: |
-          yes | sdkmanager --licenses
-          sdkmanager "platform-tools" "platforms;android-33" "build-tools;35.0.0"
+          sdkmanager "cmdline-tools;latest" \
+                     "platform-tools" \
+                     "platforms;android-33" \
+                     "build-tools;36.1.0"
+
+      - name: Add Android SDK to PATH
+        run: |
+          echo "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin" >> $GITHUB_PATH
+          echo "$ANDROID_SDK_ROOT/platform-tools" >> $GITHUB_PATH
+          echo "$ANDROID_SDK_ROOT/build-tools/36.1.0" >> $GITHUB_PATH
+
+      - name: Accept Android licenses
+        run: yes | sdkmanager --licenses
 
       - name: Build APK
         run: |
