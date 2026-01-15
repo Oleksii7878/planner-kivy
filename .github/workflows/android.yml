@@ -43,7 +43,18 @@ jobs:
           fi
 
       # (опційно) Можеш тут sed-ом правити buildozer.spec як ти робив раніше
-
+      - name: Install system build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            autoconf automake libtool libtool-bin \
+            pkg-config m4 \
+            cmake ninja-build \
+            gettext \
+            zlib1g-dev libffi-dev libssl-dev \
+            libltdl-dev
+            
       - name: Build APK
         run: |
           buildozer -v android debug
