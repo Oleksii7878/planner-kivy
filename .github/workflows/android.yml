@@ -1,0 +1,57 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install system dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y \
+            openjdk-17-jdk \
+            autoconf automake libtool pkg-config \
+            zlib1g-dev libncurses5-dev libffi-dev libssl-dev \
+            build-essential ccache
+
+      - name: Install buildozer
+        run: |
+          python -m pip install --upgrade pip
+          pip install buildozer cython
+
+      - name: Init buildozer
+        run: |
+          buildozer init
+
+      - name: Configure buildozer.spec
+        run: |
+          sed -i 's/^title = .*/title = Planner/' buildozer.spec
+          sed -i 's/^package.name = .*/package.name = planner/' buildozer.spec
+          sed -i 's/^package.domain = .*/package.domain = org.oleksii/' buildozer.spec
+          sed -i 's/^requirements = .*/requirements = python3,kivy,https:\/\/github.com\/kivymd\/KivyMD\/archive\/master.zip,plyer/' buildozer.spec
+          sed -i 's/^android.permissions = .*/android.permissions = POST_NOTIFICATIONS,VIBRATE/' buildozer.spec
+          sed -i 's/^android.api = .*/android.api = 33/' buildozer.spec
+          sed -i 's/^android.minapi = .*/android.minapi = 21/' buildozer.spec
+
+      - name: Build APK
+        run: |
+          buildozer -v android debug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Planner-APK
+          path: bin/*.apk
