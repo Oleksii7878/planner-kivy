@@ -2,68 +2,53 @@ name: Build Android APK
 
 on:
   push:
-    branches: ["main"]
+    branches: [ "main" ]
   workflow_dispatch:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Install system deps
-        run: |
-          sudo apt update
-          sudo apt install -y openjdk-17-jdk build-essential
-
-      # 1) Ставимо Android SDK (системний)
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      # 2) Приймаємо ліцензії (ВАЖЛИВО: через yes)
-      - name: Accept Android licenses
-        run: yes | sdkmanager --licenses
-
-      # 3) Ставимо пакети, які потрібні Buildozer (включно build-tools з aidl)
-      - name: Install Android SDK packages
-        run: |
-          sdkmanager "platform-tools" "platforms;android-33" "build-tools;36.1.0" "ndk;25.2.9519653"
-
-      - name: Add build-tools to PATH
-        run: |
-          echo "$ANDROID_SDK_ROOT/build-tools/36.1.0" >> $GITHUB_PATH
-          echo "$ANDROID_SDK_ROOT/platform-tools" >> $GITHUB_PATH
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.10"
 
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            git zip unzip \
+            openjdk-17-jdk \
+            build-essential \
+            autoconf automake libtool pkg-config m4 \
+            cmake ninja-build \
+            libffi-dev libssl-dev python3-dev
+
       - name: Install Buildozer
         run: |
           python -m pip install --upgrade pip
           pip install buildozer cython
-          
-      # 4) КЛЮЧ: кажемо buildozer використовувати СИСТЕМНИЙ SDK, а не ~/.buildozer/...
-      - name: Configure buildozer.spec
+
+      # НЕ робимо buildozer init (бо buildozer.spec вже є)
+      - name: Ensure buildozer.spec has version
         run: |
-          sed -i 's/^title = .*/title = Planner/' buildozer.spec
-          sed -i 's/^package.name = .*/package.name = planner/' buildozer.spec
-          sed -i 's/^package.domain = .*/package.domain = org.oleksii/' buildozer.spec
-          sed -i 's/^requirements = .*/requirements = python3,kivy/' buildozer.spec
-          sed -i 's/^android.api = .*/android.api = 33/' buildozer.spec
-          sed -i 's/^android.minapi = .*/android.minapi = 21/' buildozer.spec
-          sed -i 's/^android.ndk = .*/android.ndk = 25b/' buildozer.spec
-          echo "android.accept_sdk_license = True" >> buildozer.spec
-          echo "android.sdk_path = $ANDROID_SDK_ROOT" >> buildozer.spec
-          echo "android.ndk_path = $ANDROID_SDK_ROOT/ndk/25.2.9519653" >> buildozer.spec
+          if ! grep -qE '^\s*version\s*=' buildozer.spec; then
+            echo "ERROR: buildozer.spec missing 'version = ...' in [app]"
+            exit 1
+          fi
+
+      # (опційно) Можеш тут sed-ом правити buildozer.spec як ти робив раніше
 
       - name: Build APK
-        run: buildozer -v android debug
+        run: |
+          buildozer -v android debug
 
-      - name: Upload APK
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: Planner-APK
