@@ -2,7 +2,7 @@ name: Build Android APK
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   workflow_dispatch:
 
 jobs:
@@ -10,22 +10,36 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
+      - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Install system deps
+        run: |
+          sudo apt update
+          sudo apt install -y openjdk-17-jdk build-essential
+
+      # 1) Ставимо Android SDK (системний)
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      # 2) Приймаємо ліцензії (ВАЖЛИВО: через yes)
+      - name: Accept Android licenses
+        run: yes | sdkmanager --licenses
+
+      # 3) Ставимо пакети, які потрібні Buildozer (включно build-tools з aidl)
+      - name: Install Android SDK packages
+        run: |
+          sdkmanager "platform-tools" "platforms;android-33" "build-tools;36.1.0" "ndk;25.2.9519653"
+
+      - name: Add build-tools to PATH
+        run: |
+          echo "$ANDROID_SDK_ROOT/build-tools/36.1.0" >> $GITHUB_PATH
+          echo "$ANDROID_SDK_ROOT/platform-tools" >> $GITHUB_PATH
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.10"
-
-      - name: Install system dependencies
-        run: |
-          sudo apt update
-          sudo apt install -y \
-            openjdk-17-jdk \
-            autoconf automake libtool pkg-config \
-            zlib1g-dev libncurses5-dev libffi-dev libssl-dev \
-            build-essential
 
       - name: Install Buildozer
         run: |
@@ -33,9 +47,9 @@ jobs:
           pip install buildozer cython
 
       - name: Init buildozer
-        run: |
-          buildozer init
+        run: buildozer init
 
+      # 4) КЛЮЧ: кажемо buildozer використовувати СИСТЕМНИЙ SDK, а не ~/.buildozer/...
       - name: Configure buildozer.spec
         run: |
           sed -i 's/^title = .*/title = Planner/' buildozer.spec
@@ -46,29 +60,11 @@ jobs:
           sed -i 's/^android.minapi = .*/android.minapi = 21/' buildozer.spec
           sed -i 's/^android.ndk = .*/android.ndk = 25b/' buildozer.spec
           echo "android.accept_sdk_license = True" >> buildozer.spec
-
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install Android SDK packages
-        run: |
-          sdkmanager "cmdline-tools;latest" \
-                     "platform-tools" \
-                     "platforms;android-33" \
-                     "build-tools;36.1.0"
-
-      - name: Add Android SDK to PATH
-        run: |
-          echo "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin" >> $GITHUB_PATH
-          echo "$ANDROID_SDK_ROOT/platform-tools" >> $GITHUB_PATH
-          echo "$ANDROID_SDK_ROOT/build-tools/36.1.0" >> $GITHUB_PATH
-
-      - name: Accept Android licenses
-        run: yes | sdkmanager --licenses
+          echo "android.sdk_path = $ANDROID_SDK_ROOT" >> buildozer.spec
+          echo "android.ndk_path = $ANDROID_SDK_ROOT/ndk/25.2.9519653" >> buildozer.spec
 
       - name: Build APK
-        run: |
-          buildozer -v android debug
+        run: buildozer -v android debug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
