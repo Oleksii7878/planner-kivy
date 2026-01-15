@@ -57,6 +57,15 @@ jobs:
           echo 'android.accept_sdk_license = True' >> buildozer.spec
 
 
+     
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK packages
+        run: |
+          yes | sdkmanager --licenses
+          sdkmanager "platform-tools" "platforms;android-33" "build-tools;35.0.0"
+
       - name: Build APK
         run: |
           buildozer -v android debug
