@@ -2,10 +2,9 @@
 title = Planner
 package.name = planner
 package.domain = org.oleksii
-
 source.dir = .
-source.include_exts = py
-
+source.include_exts = py,png,jpg,kv,atlas,json,txt
+version = 0.1
 requirements = python3,kivy
 
 orientation = portrait
