@@ -7,7 +7,7 @@ source.include_exts = py,png,jpg,kv,atlas,json,txt
 version = 0.1
 requirements = python3==3.10.9,kivy==2.3.0,pyjnius==1.6.1
 
-p4a.branch = stable
+p4a.branch = master
 
 orientation = portrait
 fullscreen = 1
